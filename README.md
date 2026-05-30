@@ -1,45 +1,37 @@
 # Inventory & Order Management System
 
-Full-stack app for managing products, customers, and orders. Built with React, FastAPI, PostgreSQL, and Docker.
+React + FastAPI app to manage products, customers and orders. Stock adjusts automatically when orders are placed or deleted.
 
-When you place an order, stock goes down automatically. Delete the order and it comes back. Dashboard shows live counts and low-stock alerts.
+**Live:** [App](https://inventory-management-system-lac-zeta.vercel.app) · [API](https://daksh-api.onrender.com/docs)
 
-**Live:** [Frontend](https://inventory-management-system-lac-zeta.vercel.app) · [API docs](https://daksh-api.onrender.com/docs)
+## Features
 
----
+- Add/edit/delete products with SKU and stock tracking
+- Customer management with Indian phone validation
+- Place orders — stock deducts on create, restores on delete
+- Dashboard with low stock alerts and clickable stat cards
+- **Preview mode** — toggle in the top bar to see the app fully loaded with sample data, charts, and time range filters. Useful for demoing before real data exists.
 
-## Running locally
-
-Easiest way is Docker — no need to install Node or Python separately.
+## Run locally
 
 ```bash
-git clone https://github.com/daksh484u/Inventory-management-system.git
-cd Inventory-management-system
 docker compose up --build
+# App → http://localhost  |  API → http://localhost:8000
 ```
 
-App opens at `http://localhost`, API at `http://localhost:8000`.
-
-Without Docker — two terminals:
+Without Docker:
 
 ```bash
-# Terminal 1 — backend (uses SQLite if no DATABASE_URL is set)
-cd Backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+# backend
+cd Backend && pip install -r requirements.txt
 uvicorn app.main:app --reload
 
-# Terminal 2 — frontend
-cd Frontend
-npm install
-npm run dev        # http://localhost:5173
+# frontend (new terminal)
+cd Frontend && npm install && npm run dev
 ```
 
----
+Backend falls back to SQLite if no `DATABASE_URL` is set, so no Postgres needed for local dev.
 
 ## Stack
 
-- **Frontend** — React + Vite, react-router-dom, Axios
-- **Backend** — Python, FastAPI, SQLAlchemy 2, Pydantic v2
-- **Database** — PostgreSQL (SQLite fallback for local dev)
-- **Deploy** — Vercel (frontend), Render (backend + DB)
+React · Vite · FastAPI · SQLAlchemy · PostgreSQL · Docker
