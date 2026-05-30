@@ -1,7 +1,9 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
 
 from app.database import Base, engine
@@ -43,6 +45,17 @@ app.add_middleware(
 app.include_router(product_router)
 app.include_router(customer_router)
 app.include_router(order_router)
+
+
+# Safety net: if a unique constraint slips past the explicit checks
+# (e.g. two requests racing on the same SKU/email), return a clean 400
+# instead of letting the DB error bubble up as a 500.
+@app.exception_handler(IntegrityError)
+def handle_integrity_error(request: Request, exc: IntegrityError):
+    return JSONResponse(
+        status_code=400,
+        content={"detail": "That record conflicts with an existing one."},
+    )
 
 
 @app.get("/")

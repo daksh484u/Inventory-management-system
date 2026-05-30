@@ -10,9 +10,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
     DATABASE_URL = "sqlite:///./inventory.db"
-    print("WARNING: DATABASE_URL not set — using SQLite for local development.")
+    print("WARNING: DATABASE_URL not set, falling back to SQLite for local dev.")
 elif DATABASE_URL.startswith("postgres://"):
-    # Render/Heroku style URLs
+    # Render/Heroku hand out postgres:// URLs; SQLAlchemy 2.x needs postgresql://
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 connect_args = (

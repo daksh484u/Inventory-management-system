@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 
@@ -11,6 +12,7 @@ class OrderItemResponse(BaseModel):
     id: int
     order_id: int
     product_id: int
+    product_name: Optional[str] = None
     quantity: int
     unit_price: float
 
@@ -26,6 +28,7 @@ class OrderResponse(BaseModel):
     id: int
     customer_id: Optional[int]
     total_amount: float
+    created_at: Optional[datetime] = None
     items: List[OrderItemResponse] = []
 
     model_config = ConfigDict(from_attributes=True)

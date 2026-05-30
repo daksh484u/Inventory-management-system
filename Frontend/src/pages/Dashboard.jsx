@@ -3,68 +3,34 @@ import { Link } from "react-router-dom";
 import { getProducts } from "../services/productService";
 import { getCustomers } from "../services/customerService";
 import { getOrders } from "../services/orderService";
+import DashboardPreview from "./DashboardPreview";
+import { usePreview } from "../hooks/usePreview";
 
-/* ─── Mini sparkline chart using inline SVG ─── */
-function Sparkline({ values = [], color = "#6172f3" }) {
-  if (values.length < 2) return null;
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  const range = max - min || 1;
-  const w = 80;
-  const h = 28;
-  const points = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * w;
-    const y = h - ((v - min) / range) * h;
-    return `${x},${y}`;
-  });
-  const polyline = points.join(" ");
-  const area = `0,${h} ${polyline} ${w},${h}`;
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: "visible" }}>
-      <defs>
-        <linearGradient id={`grad-${color.replace("#","")}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={area} fill={`url(#grad-${color.replace("#","")})`} />
-      <polyline points={polyline} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
+const LOW_STOCK_THRESHOLD = 10;
 
-/* ─── Stat Card ─── */
-function StatCard({ label, value, delta, deltaUp, iconClass, icon, color, sparkData }) {
+const fmtDate = (value) => {
+  if (!value) return "-";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? "-"
+    : d.toLocaleDateString("en-US", { day: "2-digit", month: "short" });
+};
+
+function StatCard({ label, value, hint, iconClass, icon, color }) {
   return (
     <div className="stat-card" style={{ "--card-tint": color + "18" }}>
       <div className={`stat-icon ${iconClass}`}>{icon}</div>
       <div className="stat-info">
         <div className="stat-label">{label}</div>
         <div className="stat-value">{value}</div>
-        <div className={`stat-delta ${deltaUp ? "up" : "down"}`}>
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round"
-              d={deltaUp
-                ? "M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"
-                : "M2.25 6L9 12.75l4.306-4.307a11.95 11.95 0 015.814 5.519l2.74 1.22m0 0l-5.94 2.28m5.94-2.28l-2.28-5.941"
-              }
-            />
-          </svg>
-          {delta}
-        </div>
+        {hint && <div className="stat-hint">{hint}</div>}
       </div>
-      {sparkData && (
-        <div style={{ alignSelf: "center", marginLeft: "auto" }}>
-          <Sparkline values={sparkData} color={color} />
-        </div>
-      )}
     </div>
   );
 }
 
-/* ─── Low-stock Row ─── */
-function StockRow({ name, sku, qty, max }) {
-  const pct = Math.min(100, Math.round((qty / max) * 100));
+function StockRow({ name, sku, qty }) {
+  const pct = Math.min(100, Math.round((qty / 20) * 100));
   const barColor = pct <= 20 ? "var(--danger-500)" : pct <= 50 ? "var(--warning-500)" : "var(--success-500)";
   const badgeClass = pct <= 20 ? "badge-danger" : pct <= 50 ? "badge-warning" : "badge-success";
   return (
@@ -89,27 +55,7 @@ function StockRow({ name, sku, qty, max }) {
   );
 }
 
-/* ─── Recent Order Row ─── */
-function OrderRow({ order }) {
-  return (
-    <tr>
-      <td><span className="cell-mono">#{order.id}</span></td>
-      <td><span className="cell-primary">Customer #{order.customer_id}</span></td>
-      <td><strong>${order.total_amount?.toFixed(2) ?? "0.00"}</strong></td>
-      <td>
-        <span className="badge badge-success">
-          <span className="badge-dot" />
-          Completed
-        </span>
-      </td>
-      <td>
-        <Link to={`/orders/${order.id}`} className="btn btn-ghost btn-sm">View →</Link>
-      </td>
-    </tr>
-  );
-}
-
-function Dashboard() {
+function DashboardLive() {
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -118,31 +64,40 @@ function Dashboard() {
   useEffect(() => {
     Promise.all([getProducts(), getCustomers(), getOrders()])
       .then(([p, c, o]) => {
-        setProducts(Array.isArray(p.data) ? p.data : []);
-        setCustomers(Array.isArray(c.data) ? c.data : []);
-        setOrders(Array.isArray(o.data) ? o.data : []);
+        setProducts(p.data);
+        setCustomers(c.data);
+        setOrders(o.data);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  // Safe derived values — always operate on guaranteed arrays
-  const safeOrders   = Array.isArray(orders)   ? orders   : [];
-  const safeProducts = Array.isArray(products) ? products : [];
-  const totalRevenue = safeOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
-  const lowStock = safeProducts.filter((p) => p.quantity <= 10);
-  const recentOrders = [...safeOrders].reverse().slice(0, 5);
+  const totalRevenue = orders.reduce((s, o) => s + (o.total_amount || 0), 0);
+  const lowStock = products.filter((p) => p.quantity <= LOW_STOCK_THRESHOLD);
+  const recentOrders = orders.slice(0, 5);
 
-  // Sparkline data
-  const revSpark = [420, 380, 510, 490, 620, 580, 710, totalRevenue / 100 || 750];
-  const ordSpark = [8, 12, 7, 15, 11, 18, 14, safeOrders.length || 20];
+  // Real inventory health, derived from current stock levels.
+  const outCount = products.filter((p) => p.quantity === 0).length;
+  const lowCount = products.filter((p) => p.quantity > 0 && p.quantity <= LOW_STOCK_THRESHOLD).length;
+  const healthyCount = products.filter((p) => p.quantity > LOW_STOCK_THRESHOLD).length;
+  const totalProducts = products.length || 1;
+  const health = [
+    { label: "Healthy", count: healthyCount, color: "var(--success-500)" },
+    { label: "Low", count: lowCount, color: "var(--warning-500)" },
+    { label: "Out", count: outCount, color: "var(--danger-500)" },
+  ];
+
+  const customerName = (id) => {
+    const c = customers.find((c) => c.id === id);
+    return c ? c.full_name : `Customer #${id}`;
+  };
 
   if (loading) {
     return (
       <div className="page-container">
         <div className="loading-wrapper">
           <div className="spinner" />
-          <span>Loading dashboard…</span>
+          <span>Loading dashboard</span>
         </div>
       </div>
     );
@@ -150,15 +105,13 @@ function Dashboard() {
 
   return (
     <div className="page-container page-enter">
-      {/* Stats */}
       <div className="stats-grid">
         <StatCard
           label="Total Products"
-          value={safeProducts.length}
-          delta="+12% this month"
-          deltaUp
+          value={products.length}
+          hint={lowStock.length ? `${lowStock.length} low on stock` : "All well stocked"}
           iconClass="stat-icon-brand"
-          color="#6172f3"
+          color="#14b8a6"
           icon={
             <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
@@ -167,9 +120,7 @@ function Dashboard() {
         />
         <StatCard
           label="Total Customers"
-          value={Array.isArray(customers) ? customers.length : 0}
-          delta="+8% this month"
-          deltaUp
+          value={customers.length}
           iconClass="stat-icon-blue"
           color="#3b82f6"
           icon={
@@ -180,12 +131,9 @@ function Dashboard() {
         />
         <StatCard
           label="Total Orders"
-          value={safeOrders.length}
-          delta="+24% this month"
-          deltaUp
+          value={orders.length}
           iconClass="stat-icon-green"
           color="#22c55e"
-          sparkData={ordSpark}
           icon={
             <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
@@ -195,11 +143,9 @@ function Dashboard() {
         <StatCard
           label="Revenue"
           value={`$${totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          delta="+18% this month"
-          deltaUp
+          hint={`across ${orders.length} ${orders.length === 1 ? "order" : "orders"}`}
           iconClass="stat-icon-yellow"
           color="#f59e0b"
-          sparkData={revSpark}
           icon={
             <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -208,9 +154,7 @@ function Dashboard() {
         />
       </div>
 
-      {/* Lower grid */}
       <div className="dashboard-grid-3">
-        {/* Recent Orders table */}
         <div className="surface">
           <div className="surface-header">
             <div>
@@ -230,6 +174,7 @@ function Dashboard() {
                 <tr>
                   <th>Order ID</th>
                   <th>Customer</th>
+                  <th>Date</th>
                   <th>Amount</th>
                   <th>Status</th>
                   <th></th>
@@ -238,21 +183,29 @@ function Dashboard() {
               <tbody>
                 {recentOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>
+                    <td colSpan={6}>
                       <div className="table-empty">
                         <p>No orders yet</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  recentOrders.map((o) => <OrderRow key={o.id} order={o} />)
+                  recentOrders.map((o) => (
+                    <tr key={o.id}>
+                      <td><span className="cell-id">#{String(o.id).padStart(4, "0")}</span></td>
+                      <td><span className="cell-primary">{customerName(o.customer_id)}</span></td>
+                      <td style={{ color: "var(--text-secondary)" }}>{fmtDate(o.created_at)}</td>
+                      <td><strong>${o.total_amount?.toFixed(2) ?? "0.00"}</strong></td>
+                      <td><span className="badge badge-success"><span className="badge-dot" />Confirmed</span></td>
+                      <td><Link to={`/orders/${o.id}`} className="btn btn-ghost btn-sm">View</Link></td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Low Stock panel */}
         <div className="surface">
           <div className="surface-header">
             <div>
@@ -263,6 +216,25 @@ function Dashboard() {
               <span className="badge badge-danger">{lowStock.length}</span>
             )}
           </div>
+
+          {products.length > 0 && (
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-color)" }}>
+              <div style={{ display: "flex", height: 8, borderRadius: "var(--radius-full)", overflow: "hidden", background: "var(--bg-muted)" }}>
+                {health.map((h) => h.count > 0 && (
+                  <div key={h.label} style={{ width: `${(h.count / totalProducts) * 100}%`, background: h.color }} />
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
+                {health.map((h) => (
+                  <div key={h.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: h.color }} />
+                    {h.label} <strong style={{ color: "var(--text-primary)" }}>{h.count}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="table-wrapper">
             <table className="data-table">
               <thead>
@@ -277,20 +249,19 @@ function Dashboard() {
                   <tr>
                     <td colSpan={3}>
                       <div className="table-empty">
-                        <p style={{ color: "var(--success-600)", fontWeight: 600 }}>✓ All well stocked</p>
+                        <p style={{ color: "var(--success-600)", fontWeight: 600 }}>All well stocked</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   lowStock.slice(0, 6).map((p) => (
-                    <StockRow key={p.id} name={p.name} sku={p.sku} qty={p.quantity} max={20} />
+                    <StockRow key={p.id} name={p.name} sku={p.sku} qty={p.quantity} />
                   ))
                 )}
               </tbody>
             </table>
           </div>
 
-          {/* Quick links */}
           <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border-color)", display: "flex", gap: 8 }}>
             <Link to="/products" className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: "center" }}>
               <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 13, height: 13 }}>
@@ -299,13 +270,22 @@ function Dashboard() {
               Add Product
             </Link>
             <Link to="/customers" className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: "center" }}>
-              Customers →
+              Customers
             </Link>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+function Dashboard() {
+  const { preview } = usePreview();
+  return preview ? (
+    <div className="page-container page-enter">
+      <DashboardPreview />
+    </div>
+  ) : <DashboardLive />;
 }
 
 export default Dashboard;

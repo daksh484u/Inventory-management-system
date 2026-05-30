@@ -4,60 +4,27 @@ import {
   createCustomer,
   deleteCustomer,
 } from "../services/customerService";
+import { useToasts } from "../hooks/useToasts";
+import { Toasts } from "../components/Toast";
+import ConfirmDialog from "../components/ConfirmDialog";
+import PageHeader from "../components/PageHeader";
+import Pagination from "../components/Pagination";
+import { usePreview } from "../hooks/usePreview";
+import CustomersPreview from "./preview/CustomersPreview";
 
-/* ─── Toast ─── */
-function Toast({ toasts }) {
-  return (
-    <div className="toast-container">
-      {toasts.map((t) => (
-        <div key={t.id} className={`toast toast-${t.type}`}>
-          <svg className="toast-icon" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            {t.type === "success" ? (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-            )}
-          </svg>
-          {t.message}
-        </div>
-      ))}
-    </div>
-  );
-}
+const PAGE_SIZE = 8;
+const fmtId = (id) => `#${String(id).padStart(4, "0")}`;
+const AVATAR_COLORS = ["#14b8a6", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#a855f7", "#0ea5e9"];
 
-/* ─── Confirm Dialog ─── */
-function ConfirmDialog({ message, onConfirm, onCancel }) {
-  return (
-    <div className="confirm-overlay">
-      <div className="confirm-box">
-        <div className="confirm-icon">
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-          </svg>
-        </div>
-        <div className="confirm-title">Remove Customer</div>
-        <div className="confirm-body">{message}</div>
-        <div className="confirm-actions">
-          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-          <button className="btn btn-danger" onClick={onConfirm}>Delete</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Customer Avatar ─── */
 function Avatar({ name }) {
   const initials = name
     ? name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
     : "?";
-  // Consistent colour from name hash
-  const colors = ["#6172f3", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#a855f7", "#14b8a6"];
-  const idx = name ? name.charCodeAt(0) % colors.length : 0;
+  const color = AVATAR_COLORS[name ? name.charCodeAt(0) % AVATAR_COLORS.length : 0];
   return (
     <div style={{
       width: 32, height: 32, borderRadius: "50%",
-      background: colors[idx], color: "#fff",
+      background: color, color: "#fff",
       display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: 12, fontWeight: 700, flexShrink: 0,
     }}>
@@ -66,7 +33,6 @@ function Avatar({ name }) {
   );
 }
 
-/* ─── Add Customer Modal ─── */
 const EMPTY = { full_name: "", email: "", phone: "" };
 
 function CustomerModal({ onSave, onClose }) {
@@ -104,11 +70,7 @@ function CustomerModal({ onSave, onClose }) {
 
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
-            {err && (
-              <div style={{ padding: "10px 14px", background: "var(--danger-50)", color: "var(--danger-600)", borderRadius: "var(--radius-md)", fontSize: 13, fontWeight: 500 }}>
-                {err}
-              </div>
-            )}
+            {err && <div className="form-error">{err}</div>}
             <div className="form-group">
               <label className="form-label" htmlFor="cust-name">Full Name *</label>
               <input id="cust-name" className="form-input" name="full_name" placeholder="e.g. Jane Smith" required value={form.full_name} onChange={handleChange} />
@@ -127,7 +89,7 @@ function CustomerModal({ onSave, onClose }) {
             <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={saving} id="save-customer-btn">
               {saving ? (
-                <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Saving…</>
+                <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Saving</>
               ) : "Add Customer"}
             </button>
           </div>
@@ -137,74 +99,80 @@ function CustomerModal({ onSave, onClose }) {
   );
 }
 
-/* ─── Main Page ─── */
-function Customers() {
+function CustomersLive() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const [toasts, setToasts] = useState([]);
-
-  const addToast = (message, type = "success") => {
-    const id = Date.now();
-    setToasts((t) => [...t, { id, message, type }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3000);
-  };
+  const { toasts, notify } = useToasts();
 
   const load = () => {
     setLoading(true);
     getCustomers()
-      .then((r) => setCustomers(Array.isArray(r.data) ? r.data : []))
-      .catch(() => addToast("Failed to load customers", "danger"))
+      .then((r) => setCustomers(r.data))
+      .catch(() => notify("Failed to load customers", "error"))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    getCustomers()
+      .then((r) => { if (!cancelled) setCustomers(r.data); })
+      .catch(() => { if (!cancelled) notify("Failed to load customers", "error"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [notify]);
 
   const handleSave = () => {
     setShowModal(false);
-    addToast("Customer added!");
+    notify("Customer added");
     load();
   };
 
   const handleDelete = async () => {
     try {
       await deleteCustomer(toDelete.id);
-      addToast(`"${toDelete.full_name}" removed`);
+      notify(`"${toDelete.full_name}" removed`);
       load();
-    } catch {
-      addToast("Failed to delete", "danger");
+    } catch (e) {
+      notify(e?.response?.data?.detail || "Failed to delete", "error");
     } finally {
       setToDelete(null);
     }
   };
 
-  const safeCustomers = Array.isArray(customers) ? customers : [];
-  const filtered = safeCustomers.filter((c) =>
-    [c.full_name, c.email, c.phone].some((f) => f?.toLowerCase().includes(search.toLowerCase()))
+  const term = search.trim().toLowerCase();
+  const filtered = customers.filter((c) =>
+    [c.full_name, c.email, c.phone].some((f) => f?.toLowerCase().includes(term))
   );
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const onSearch = (e) => { setSearch(e.target.value); setPage(1); };
 
   return (
     <div className="page-container page-enter">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1>Customers</h1>
-          <p>{safeCustomers.length} registered customers</p>
-        </div>
-        <button id="add-customer-btn" className="btn btn-primary" onClick={() => setShowModal(true)}>
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          Add Customer
-        </button>
-      </div>
+      <PageHeader
+        title="Customers"
+        subtitle={`${customers.length} registered customers`}
+        actions={
+          <button id="add-customer-btn" className="btn btn-primary" onClick={() => setShowModal(true)}>
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Add Customer
+          </button>
+        }
+      />
 
       <div className="surface">
         <div className="surface-header">
           <div>
             <div className="surface-title">Customer List</div>
-            <div className="surface-subtitle">{filtered.length} of {safeCustomers.length} shown</div>
+            <div className="surface-subtitle">{filtered.length} of {customers.length} shown</div>
           </div>
           <div style={{ position: "relative" }}>
             <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--text-tertiary)", pointerEvents: "none" }}
@@ -215,9 +183,9 @@ function Customers() {
               id="customer-search"
               className="form-input"
               style={{ paddingLeft: 32, width: 200, height: 34 }}
-              placeholder="Search customers…"
+              placeholder="Search customers"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={onSearch}
             />
           </div>
         </div>
@@ -226,13 +194,13 @@ function Customers() {
           {loading ? (
             <div className="loading-wrapper">
               <div className="spinner" />
-              <span>Loading customers…</span>
+              <span>Loading customers</span>
             </div>
           ) : (
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th>ID</th>
                   <th>Customer</th>
                   <th>Email</th>
                   <th>Phone</th>
@@ -253,9 +221,9 @@ function Customers() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((c, i) => (
+                  paged.map((c) => (
                     <tr key={c.id}>
-                      <td className="cell-mono">{i + 1}</td>
+                      <td><span className="cell-id">{fmtId(c.id)}</span></td>
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <Avatar name={c.full_name} />
@@ -265,11 +233,7 @@ function Customers() {
                       <td style={{ color: "var(--text-secondary)" }}>{c.email}</td>
                       <td style={{ color: "var(--text-secondary)" }}>{c.phone}</td>
                       <td>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => setToDelete(c)}
-                          id={`delete-customer-${c.id}`}
-                        >
+                        <button className="btn btn-danger btn-sm" onClick={() => setToDelete(c)} id={`delete-customer-${c.id}`}>
                           <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" style={{ width: 13, height: 13 }}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                           </svg>
@@ -283,21 +247,31 @@ function Customers() {
             </table>
           )}
         </div>
+
+        {!loading && filtered.length > 0 && (
+          <Pagination page={safePage} pageSize={PAGE_SIZE} total={filtered.length} onPage={setPage} />
+        )}
       </div>
 
       {showModal && <CustomerModal onSave={handleSave} onClose={() => setShowModal(false)} />}
 
       {toDelete && (
         <ConfirmDialog
+          title="Remove Customer"
           message={`Remove "${toDelete.full_name}" (${toDelete.email}) from your customer list? This cannot be undone.`}
           onConfirm={handleDelete}
           onCancel={() => setToDelete(null)}
         />
       )}
 
-      <Toast toasts={toasts} />
+      <Toasts toasts={toasts} />
     </div>
   );
+}
+
+function Customers() {
+  const { preview } = usePreview();
+  return preview ? <CustomersPreview /> : <CustomersLive />;
 }
 
 export default Customers;

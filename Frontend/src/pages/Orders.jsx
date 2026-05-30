@@ -3,49 +3,24 @@ import { Link } from "react-router-dom";
 import { getOrders, createOrder, deleteOrder } from "../services/orderService";
 import { getCustomers } from "../services/customerService";
 import { getProducts } from "../services/productService";
+import { useToasts } from "../hooks/useToasts";
+import { Toasts } from "../components/Toast";
+import ConfirmDialog from "../components/ConfirmDialog";
+import PageHeader from "../components/PageHeader";
+import Pagination from "../components/Pagination";
+import { usePreview } from "../hooks/usePreview";
+import OrdersPreview from "./preview/OrdersPreview";
 
-/* ─── Toast ─── */
-function Toast({ toasts }) {
-  return (
-    <div className="toast-container">
-      {toasts.map((t) => (
-        <div key={t.id} className={`toast toast-${t.type}`}>
-          <svg className="toast-icon" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            {t.type === "success" ? (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-            )}
-          </svg>
-          {t.message}
-        </div>
-      ))}
-    </div>
-  );
-}
+const PAGE_SIZE = 8;
+const fmtId = (id) => `#${String(id).padStart(4, "0")}`;
+const fmtDate = (value) => {
+  if (!value) return "-";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? "-"
+    : d.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+};
 
-/* ─── Confirm Dialog ─── */
-function ConfirmDialog({ message, onConfirm, onCancel }) {
-  return (
-    <div className="confirm-overlay">
-      <div className="confirm-box">
-        <div className="confirm-icon">
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-          </svg>
-        </div>
-        <div className="confirm-title">Cancel Order?</div>
-        <div className="confirm-body">{message}</div>
-        <div className="confirm-actions">
-          <button className="btn btn-secondary" onClick={onCancel}>Keep</button>
-          <button className="btn btn-danger" onClick={onConfirm}>Delete</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Create Order Modal ─── */
 function CreateOrderModal({ customers, products, onSave, onClose }) {
   const [customerId, setCustomerId] = useState("");
   const [lines, setLines] = useState([{ product_id: "", quantity: 1 }]);
@@ -53,15 +28,14 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
   const [err, setErr] = useState("");
 
   const addLine = () => setLines((l) => [...l, { product_id: "", quantity: 1 }]);
-
   const removeLine = (i) => setLines((l) => l.filter((_, idx) => idx !== i));
-
   const updateLine = (i, field, value) =>
     setLines((l) => l.map((row, idx) => (idx === i ? { ...row, [field]: value } : row)));
 
-  // Calculate estimated total from selected products
+  const findProduct = (id) => products.find((p) => String(p.id) === String(id));
+
   const estimatedTotal = lines.reduce((sum, line) => {
-    const product = products.find((p) => String(p.id) === String(line.product_id));
+    const product = findProduct(line.product_id);
     return sum + (product ? product.price * (parseInt(line.quantity) || 0) : 0);
   }, 0);
 
@@ -105,13 +79,8 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
 
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
-            {err && (
-              <div style={{ padding: "10px 14px", background: "var(--danger-50)", color: "var(--danger-600)", borderRadius: "var(--radius-md)", fontSize: 13, fontWeight: 500, lineHeight: 1.5 }}>
-                ⚠️ {err}
-              </div>
-            )}
+            {err && <div className="form-error">{err}</div>}
 
-            {/* Customer */}
             <div className="form-group">
               <label className="form-label" htmlFor="order-customer">Customer *</label>
               <select
@@ -122,14 +91,13 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
                 required
                 style={{ cursor: "pointer" }}
               >
-                <option value="">— Select a customer —</option>
+                <option value="">Select a customer</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>{c.full_name} ({c.email})</option>
                 ))}
               </select>
             </div>
 
-            {/* Order Lines */}
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <label className="form-label" style={{ margin: 0 }}>Products *</label>
@@ -143,8 +111,8 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {lines.map((line, i) => {
-                  const selectedProduct = products.find((p) => String(p.id) === String(line.product_id));
-                  const stockOk = !selectedProduct || selectedProduct.quantity >= (parseInt(line.quantity) || 0);
+                  const selected = findProduct(line.product_id);
+                  const stockOk = !selected || selected.quantity >= (parseInt(line.quantity) || 0);
                   return (
                     <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 90px auto", gap: 8, alignItems: "center" }}>
                       <select
@@ -152,12 +120,12 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
                         value={line.product_id}
                         onChange={(e) => updateLine(i, "product_id", e.target.value)}
                         required
-                        style={{ cursor: "pointer", borderColor: selectedProduct && !stockOk ? "var(--danger-500)" : undefined }}
+                        style={{ cursor: "pointer", borderColor: selected && !stockOk ? "var(--danger-500)" : undefined }}
                       >
-                        <option value="">— Select product —</option>
+                        <option value="">Select product</option>
                         {products.map((p) => (
                           <option key={p.id} value={p.id} disabled={p.quantity === 0}>
-                            {p.name} — ${p.price.toFixed(2)} (stock: {p.quantity})
+                            {p.name} - ${p.price.toFixed(2)} (stock: {p.quantity})
                           </option>
                         ))}
                       </select>
@@ -165,7 +133,7 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
                         className="form-input"
                         type="number"
                         min="1"
-                        max={selectedProduct?.quantity || 9999}
+                        max={selected?.quantity || 9999}
                         value={line.quantity}
                         onChange={(e) => updateLine(i, "quantity", e.target.value)}
                         required
@@ -184,13 +152,12 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
                 })}
               </div>
 
-              {/* Stock warnings */}
               {lines.map((line, i) => {
-                const p = products.find((pr) => String(pr.id) === String(line.product_id));
+                const p = findProduct(line.product_id);
                 if (p && parseInt(line.quantity) > p.quantity) {
                   return (
                     <div key={`warn-${i}`} style={{ fontSize: 12, color: "var(--danger-600)", marginTop: 4 }}>
-                      ⚠️ {p.name}: only {p.quantity} in stock
+                      {p.name}: only {p.quantity} in stock
                     </div>
                   );
                 }
@@ -198,7 +165,6 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
               })}
             </div>
 
-            {/* Estimated total */}
             {estimatedTotal > 0 && (
               <div style={{
                 padding: "12px 16px",
@@ -221,7 +187,7 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
             <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={saving} id="create-order-btn">
               {saving ? (
-                <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Creating…</>
+                <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Creating</>
               ) : (
                 <>
                   <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 14, height: 14 }}>
@@ -238,100 +204,101 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
   );
 }
 
-/* ─── Status Badge ─── */
-function getStatus(id) {
-  const statuses = ["completed", "processing", "pending", "cancelled"];
-  return statuses[id % statuses.length];
-}
-
-function StatusBadge({ status }) {
-  const cfg = {
-    completed:  { cls: "badge-success", label: "Completed" },
-    processing: { cls: "badge-info",    label: "Processing" },
-    pending:    { cls: "badge-warning", label: "Pending" },
-    cancelled:  { cls: "badge-danger",  label: "Cancelled" },
-  };
-  const { cls, label } = cfg[status] || cfg.pending;
-  return (
-    <span className={`badge ${cls}`}>
-      <span className="badge-dot" />
-      {label}
-    </span>
-  );
-}
-
-/* ─── Main Page ─── */
-function Orders() {
+function OrdersLive() {
   const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const [toasts, setToasts] = useState([]);
-
-  const addToast = (message, type = "success") => {
-    const id = Date.now();
-    setToasts((t) => [...t, { id, message, type }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500);
-  };
+  const { toasts, notify } = useToasts();
 
   const load = () => {
     setLoading(true);
     Promise.all([getOrders(), getCustomers(), getProducts()])
       .then(([o, c, p]) => {
-        setOrders(Array.isArray(o.data) ? o.data : []);
-        setCustomers(Array.isArray(c.data) ? c.data : []);
-        setProducts(Array.isArray(p.data) ? p.data : []);
+        setOrders(o.data);
+        setCustomers(c.data);
+        setProducts(p.data);
       })
-      .catch(() => addToast("Failed to load data", "danger"))
+      .catch(() => notify("Failed to load data", "error"))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getOrders(), getCustomers(), getProducts()])
+      .then(([o, c, p]) => {
+        if (cancelled) return;
+        setOrders(o.data);
+        setCustomers(c.data);
+        setProducts(p.data);
+      })
+      .catch(() => { if (!cancelled) notify("Failed to load data", "error"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [notify]);
 
   const handleOrderCreated = () => {
     setShowCreate(false);
-    addToast("Order created! Stock has been updated.");
+    notify("Order created, stock updated");
     load();
   };
 
   const handleDelete = async () => {
     try {
       await deleteOrder(toDelete.id);
-      addToast(`Order #${toDelete.id} deleted`);
+      notify(`Order #${toDelete.id} deleted, stock restored`);
       load();
-    } catch {
-      addToast("Failed to delete order", "danger");
+    } catch (e) {
+      notify(e?.response?.data?.detail || "Failed to delete order", "error");
     } finally {
       setToDelete(null);
     }
   };
-
-  const safeOrders = Array.isArray(orders) ? orders : [];
-  const filtered = safeOrders.filter((o) =>
-    String(o.id).includes(search) ||
-    String(o.customer_id).includes(search)
-  );
-
-  const totalRevenue = safeOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
 
   const getCustomerName = (id) => {
     const c = customers.find((c) => c.id === id);
     return c ? c.full_name : `Customer #${id}`;
   };
 
+  const filtered = orders.filter((o) =>
+    String(o.id).includes(search) || String(o.customer_id).includes(search)
+  );
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const onSearch = (e) => { setSearch(e.target.value); setPage(1); };
+
+  const totalRevenue = orders.reduce((s, o) => s + (o.total_amount || 0), 0);
+
+  const summary = [
+    { label: "Total Orders", value: orders.length, icon: "📋", bg: "var(--brand-50)", text: "var(--brand-700)" },
+    { label: "Total Revenue", value: `$${totalRevenue.toFixed(2)}`, icon: "💰", bg: "var(--success-50)", text: "var(--success-700)" },
+    { label: "Avg. Order Value", value: orders.length ? `$${(totalRevenue / orders.length).toFixed(2)}` : "$0.00", icon: "📊", bg: "var(--warning-50)", text: "var(--warning-700)" },
+  ];
+
   return (
     <div className="page-container page-enter">
-      {/* Summary cards */}
+      <PageHeader
+        title="Orders"
+        subtitle={`${orders.length} total orders, stock auto-updated on creation`}
+        actions={
+          <button id="create-order-open-btn" className="btn btn-primary" onClick={() => setShowCreate(true)}>
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Create Order
+          </button>
+        }
+      />
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
-        {[
-          { label: "Total Orders",     value: safeOrders.length,            icon: "📋", color: "var(--brand-50)",   text: "var(--brand-700)"   },
-          { label: "Total Revenue",    value: `$${totalRevenue.toFixed(2)}`, icon: "💰", color: "var(--success-50)", text: "var(--success-700)" },
-          { label: "Avg. Order Value", value: safeOrders.length ? `$${(totalRevenue / safeOrders.length).toFixed(2)}` : "$0.00", icon: "📊", color: "var(--warning-50)", text: "var(--warning-700)" },
-        ].map((s) => (
-          <div key={s.label} style={{ background: s.color, borderRadius: "var(--radius-lg)", padding: "16px 20px", border: "1px solid var(--border-color)" }}>
+        {summary.map((s) => (
+          <div key={s.label} style={{ background: s.bg, borderRadius: "var(--radius-lg)", padding: "16px 20px", border: "1px solid var(--border-color)" }}>
             <div style={{ fontSize: 22, marginBottom: 4 }}>{s.icon}</div>
             <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{s.label}</div>
             <div style={{ fontSize: 24, fontWeight: 800, color: s.text, letterSpacing: "-0.5px" }}>{s.value}</div>
@@ -339,26 +306,11 @@ function Orders() {
         ))}
       </div>
 
-      {/* Page header */}
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1>Orders</h1>
-          <p>{safeOrders.length} total orders • stock auto-updated on creation</p>
-        </div>
-        <button id="create-order-open-btn" className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          Create Order
-        </button>
-      </div>
-
-      {/* Table */}
       <div className="surface">
         <div className="surface-header">
           <div>
             <div className="surface-title">All Orders</div>
-            <div className="surface-subtitle">{filtered.length} of {safeOrders.length} shown</div>
+            <div className="surface-subtitle">{filtered.length} of {orders.length} shown</div>
           </div>
           <div style={{ position: "relative" }}>
             <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--text-tertiary)", pointerEvents: "none" }}
@@ -369,9 +321,9 @@ function Orders() {
               id="order-search"
               className="form-input"
               style={{ paddingLeft: 32, width: 220, height: 34 }}
-              placeholder="Search by ID or customer ID…"
+              placeholder="Search by order or customer ID"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={onSearch}
             />
           </div>
         </div>
@@ -380,7 +332,7 @@ function Orders() {
           {loading ? (
             <div className="loading-wrapper">
               <div className="spinner" />
-              <span>Loading orders…</span>
+              <span>Loading orders</span>
             </div>
           ) : (
             <table className="data-table">
@@ -388,6 +340,7 @@ function Orders() {
                 <tr>
                   <th>Order ID</th>
                   <th>Customer</th>
+                  <th>Date</th>
                   <th>Items</th>
                   <th>Total</th>
                   <th>Status</th>
@@ -397,7 +350,7 @@ function Orders() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <div className="table-empty">
                         <svg className="table-empty-icon" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
@@ -408,15 +361,16 @@ function Orders() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((o) => (
+                  paged.map((o) => (
                     <tr key={o.id}>
-                      <td><span className="badge badge-gray">#{o.id}</span></td>
+                      <td><span className="cell-id">{fmtId(o.id)}</span></td>
                       <td className="cell-primary">{getCustomerName(o.customer_id)}</td>
+                      <td style={{ color: "var(--text-secondary)" }}>{fmtDate(o.created_at)}</td>
                       <td style={{ color: "var(--text-secondary)" }}>
                         {o.items?.length ?? 0} {(o.items?.length ?? 0) === 1 ? "item" : "items"}
                       </td>
                       <td><strong style={{ color: "var(--brand-600)" }}>${o.total_amount?.toFixed(2) ?? "0.00"}</strong></td>
-                      <td><StatusBadge status={getStatus(o.id)} /></td>
+                      <td><span className="badge badge-success"><span className="badge-dot" />Confirmed</span></td>
                       <td>
                         <div className="cell-actions">
                           <Link to={`/orders/${o.id}`} className="btn btn-secondary btn-sm" id={`view-order-${o.id}`}>
@@ -441,30 +395,38 @@ function Orders() {
             </table>
           )}
         </div>
+
+        {!loading && filtered.length > 0 && (
+          <Pagination page={safePage} pageSize={PAGE_SIZE} total={filtered.length} onPage={setPage} />
+        )}
       </div>
 
-      {/* Create Order Modal */}
       {showCreate && (
         <CreateOrderModal
-          customers={Array.isArray(customers) ? customers : []}
-          products={Array.isArray(products) ? products : []}
+          customers={customers}
+          products={products}
           onSave={handleOrderCreated}
           onClose={() => setShowCreate(false)}
         />
       )}
 
-      {/* Delete Confirm */}
       {toDelete && (
         <ConfirmDialog
-          message={`Delete order #${toDelete.id} worth $${toDelete.total_amount?.toFixed(2)}? This cannot be undone.`}
+          title="Cancel Order?"
+          message={`Delete order #${toDelete.id} worth $${toDelete.total_amount?.toFixed(2)}? Stock will be restored. This cannot be undone.`}
           onConfirm={handleDelete}
           onCancel={() => setToDelete(null)}
         />
       )}
 
-      <Toast toasts={toasts} />
+      <Toasts toasts={toasts} />
     </div>
   );
+}
+
+function Orders() {
+  const { preview } = usePreview();
+  return preview ? <OrdersPreview /> : <OrdersLive />;
 }
 
 export default Orders;
