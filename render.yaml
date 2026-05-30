@@ -1,0 +1,24 @@
+# Render Blueprint — deploy backend + managed PostgreSQL
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: daksh-api
+    runtime: docker
+    dockerfilePath: ./Backend/Dockerfile
+    dockerContext: ./Backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: daksh-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        sync: false
+    region: oregon
+
+databases:
+  - name: daksh-db
+    plan: free
+    databaseName: inventory
+    user: daksh
