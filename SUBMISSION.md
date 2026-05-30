@@ -1,6 +1,6 @@
 # Project submission
 
-**Name:** Daksh  
+**Name:** Daksh Lamba
 **Project:** Inventory & Order Management System
 
 ---
