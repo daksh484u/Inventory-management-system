@@ -1,147 +1,45 @@
 # Inventory & Order Management System
 
-A small full-stack app to manage products, customers, and orders. You can add stock, register customers, place orders, and see everything on a dashboard. Stock updates automatically when you create or delete an order.
+Full-stack app for managing products, customers, and orders. Built with React, FastAPI, PostgreSQL, and Docker.
 
-**Stack:** React (frontend) · FastAPI (backend) · PostgreSQL · Docker
+When you place an order, stock goes down automatically. Delete the order and it comes back. Dashboard shows live counts and low-stock alerts.
 
-**Repo:** https://github.com/daksh484u/Inventory-order-management
-
----
-
-## What you need
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running  
-- Git (to clone the repo)
-
-That’s enough to run the whole project. You don’t need to install Node or Python separately if you use Docker.
+**Live:** [Frontend](https://inventory-management-system-lac-zeta.vercel.app) · [API docs](https://daksh-api.onrender.com/docs)
 
 ---
 
-## How to run (Docker — easiest way)
+## Running locally
 
-**1.** Clone the project and go into the folder:
-
-```bash
-git clone https://github.com/daksh484u/Inventory-order-management.git
-cd Inventory-order-management
-```
-
-**2.** Create your env file:
+Easiest way is Docker — no need to install Node or Python separately.
 
 ```bash
-cp .env.example .env
-```
-
-Open `.env` and set a password for Postgres, for example:
-
-```
-POSTGRES_PASSWORD=mysecretpassword123
-```
-
-**3.** Start everything:
-
-```bash
+git clone https://github.com/daksh484u/Inventory-management-system.git
+cd Inventory-management-system
 docker compose up --build
 ```
 
-Wait until you see the backend and frontend are up (first time can take a few minutes).
+App opens at `http://localhost`, API at `http://localhost:8000`.
 
-**4.** Open in the browser:
-
-| What | URL |
-|------|-----|
-| App (UI) | http://localhost |
-| API | http://localhost:8000 |
-| API docs | http://localhost:8000/docs |
-
-To stop: press `Ctrl + C` in the terminal, or run `docker compose down`.
-
----
-
-## Run without Docker (optional)
-
-Use this only if you prefer running backend and frontend on your machine.
-
-**Database** — you still need PostgreSQL running locally (or use the `db` service from Docker Compose alone).
-
-**Backend**
+Without Docker — two terminals:
 
 ```bash
+# Terminal 1 — backend (uses SQLite if no DATABASE_URL is set)
 cd Backend
-python -m venv venv
-venv\Scripts\activate          # Windows
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-```
+uvicorn app.main:app --reload
 
-Create `Backend/.env`:
-
-```
-DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/inventory
-```
-
-```bash
-uvicorn app.main:app --reload --port 8000
-```
-
-**Frontend** (new terminal)
-
-```bash
+# Terminal 2 — frontend
 cd Frontend
 npm install
-```
-
-Create `Frontend/.env`:
-
-```
-VITE_API_URL=http://localhost:8000
-```
-
-```bash
-npm run dev
-```
-
-Open http://localhost:5173
-
----
-
-## Project folders
-
-```
-Backend/     → API (Python + FastAPI)
-Frontend/    → UI (React + Vite)
-docker-compose.yml
-.env.example
+npm run dev        # http://localhost:5173
 ```
 
 ---
 
-## Main features
+## Stack
 
-- Add / edit / delete products (name, SKU, price, quantity)
-- Add / delete customers (name, email, phone)
-- Create orders with one or more products — total is calculated on the server
-- Stock goes down when you place an order; it comes back if you delete the order
-- Dashboard shows product count, customer count, order count, and low-stock items
-
----
-
-## API (quick reference)
-
-- `GET/POST /products` · `GET/PUT/DELETE /products/{id}`
-- `GET/POST /customers` · `GET/DELETE /customers/{id}`
-- `GET/POST /orders` · `GET/DELETE /orders/{id}`
-- `GET /health` — check if API is running
-
-Full interactive docs: http://localhost:8000/docs (when backend is running)
-
----
-
-## Deploying online
-
-See [SUBMISSION.md](./SUBMISSION.md) for links and deployment steps (Render + Vercel/Netlify + Docker Hub).
-
----
-
-## Author
-
-**Daksh** — [daksh484u](https://github.com/daksh484u)
+- **Frontend** — React + Vite, react-router-dom, Axios
+- **Backend** — Python, FastAPI, SQLAlchemy 2, Pydantic v2
+- **Database** — PostgreSQL (SQLite fallback for local dev)
+- **Deploy** — Vercel (frontend), Render (backend + DB)
