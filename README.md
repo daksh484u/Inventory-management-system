@@ -1,122 +1,147 @@
-# Daksh — Inventory & Order Management System
+# Inventory & Order Management System
 
-Production-ready full-stack system for **products**, **customers**, **orders**, and **inventory tracking**. Built with React, FastAPI, PostgreSQL, Docker, and Docker Compose.
+A small full-stack app to manage products, customers, and orders. You can add stock, register customers, place orders, and see everything on a dashboard. Stock updates automatically when you create or delete an order.
 
-## Tech stack
+**Stack:** React (frontend) · FastAPI (backend) · PostgreSQL · Docker
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19 + Vite + React Router |
-| Backend | Python 3.12 + FastAPI |
-| Database | PostgreSQL 16 |
-| Containers | Docker (multi-stage, slim images) |
-| Orchestration | Docker Compose |
+**Repo:** https://github.com/daksh484u/Inventory-order-management
 
-## Features
+---
 
-- **Products** — CRUD, unique SKU, non-negative stock
-- **Customers** — CRUD, unique email
-- **Orders** — multi-line orders, stock validation, auto total, stock deduction on create, stock restored on cancel/delete
-- **Dashboard** — totals + low-stock alerts
-- **API** — validation, proper HTTP status codes, OpenAPI docs at `/docs`
+## What you need
 
-## Project structure
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running  
+- Git (to clone the repo)
 
-```
-Daksh/
-├── Backend/           # FastAPI + SQLAlchemy
-├── Frontend/          # React SPA (Vite)
-├── docker-compose.yml
-├── render.yaml        # Render deployment blueprint
-├── .env.example
-└── SUBMISSION.md      # Links template for assignment
-```
+That’s enough to run the whole project. You don’t need to install Node or Python separately if you use Docker.
 
-## Run with Docker Compose (recommended)
+---
+
+## How to run (Docker — easiest way)
+
+**1.** Clone the project and go into the folder:
 
 ```bash
-git clone <your-repo-url>
-cd Daksh
+git clone https://github.com/daksh484u/Inventory-order-management.git
+cd Inventory-order-management
+```
+
+**2.** Create your env file:
+
+```bash
 cp .env.example .env
-# Set POSTGRES_PASSWORD in .env
+```
+
+Open `.env` and set a password for Postgres, for example:
+
+```
+POSTGRES_PASSWORD=mysecretpassword123
+```
+
+**3.** Start everything:
+
+```bash
 docker compose up --build
 ```
 
-| Service | URL |
-|---|---|
-| Frontend | http://localhost |
-| Backend API | http://localhost:8000 |
-| Swagger UI | http://localhost:8000/docs |
+Wait until you see the backend and frontend are up (first time can take a few minutes).
 
-## Local development (without Docker)
+**4.** Open in the browser:
+
+| What | URL |
+|------|-----|
+| App (UI) | http://localhost |
+| API | http://localhost:8000 |
+| API docs | http://localhost:8000/docs |
+
+To stop: press `Ctrl + C` in the terminal, or run `docker compose down`.
+
+---
+
+## Run without Docker (optional)
+
+Use this only if you prefer running backend and frontend on your machine.
+
+**Database** — you still need PostgreSQL running locally (or use the `db` service from Docker Compose alone).
 
 **Backend**
 
 ```bash
 cd Backend
 python -m venv venv
-venv\Scripts\activate
+venv\Scripts\activate          # Windows
 pip install -r requirements.txt
-# .env: DATABASE_URL=postgresql://user:pass@localhost:5432/inventory
+```
+
+Create `Backend/.env`:
+
+```
+DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/inventory
+```
+
+```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-**Frontend**
+**Frontend** (new terminal)
 
 ```bash
 cd Frontend
 npm install
-# .env: VITE_API_URL=http://localhost:8000
+```
+
+Create `Frontend/.env`:
+
+```
+VITE_API_URL=http://localhost:8000
+```
+
+```bash
 npm run dev
 ```
 
-## API endpoints
+Open http://localhost:5173
 
-| Resource | Methods |
-|---|---|
-| `/products` | GET, POST |
-| `/products/{id}` | GET, PUT, DELETE |
-| `/customers` | GET, POST |
-| `/customers/{id}` | GET, DELETE |
-| `/orders` | GET, POST |
-| `/orders/{id}` | GET, DELETE |
-| `/health` | GET |
+---
 
-## Business rules
+## Project folders
 
-- Product SKU must be unique
-- Customer email must be unique
-- Product quantity cannot be negative
-- Orders rejected when stock is insufficient (HTTP 422)
-- Order total calculated by the backend
-- Stock reduced when an order is created; restored when deleted
-
-## Environment variables
-
-| Variable | Used by | Description |
-|---|---|---|
-| `POSTGRES_*` | docker-compose `db` | Database credentials |
-| `DATABASE_URL` | backend | PostgreSQL connection string |
-| `CORS_ORIGINS` | backend | Comma-separated allowed frontend origins |
-| `VITE_API_URL` | frontend build | Public backend URL for browser requests |
-
-## Deployment
-
-See **[SUBMISSION.md](./SUBMISSION.md)** for step-by-step Render, Vercel/Netlify, and Docker Hub instructions.
-
-**Backend:** Render / Railway / Fly.io (Dockerfile in `Backend/`)
-
-**Frontend:** Vercel / Netlify (root directory `Frontend`, set `VITE_API_URL`)
-
-After deploying, set `CORS_ORIGINS` on the backend to include your frontend URL.
-
-## Docker Hub
-
-```bash
-docker build -t YOUR_USERNAME/daksh-backend:latest ./Backend
-docker push YOUR_USERNAME/daksh-backend:latest
+```
+Backend/     → API (Python + FastAPI)
+Frontend/    → UI (React + Vite)
+docker-compose.yml
+.env.example
 ```
 
-## License
+---
 
-MIT
+## Main features
+
+- Add / edit / delete products (name, SKU, price, quantity)
+- Add / delete customers (name, email, phone)
+- Create orders with one or more products — total is calculated on the server
+- Stock goes down when you place an order; it comes back if you delete the order
+- Dashboard shows product count, customer count, order count, and low-stock items
+
+---
+
+## API (quick reference)
+
+- `GET/POST /products` · `GET/PUT/DELETE /products/{id}`
+- `GET/POST /customers` · `GET/DELETE /customers/{id}`
+- `GET/POST /orders` · `GET/DELETE /orders/{id}`
+- `GET /health` — check if API is running
+
+Full interactive docs: http://localhost:8000/docs (when backend is running)
+
+---
+
+## Deploying online
+
+See [SUBMISSION.md](./SUBMISSION.md) for links and deployment steps (Render + Vercel/Netlify + Docker Hub).
+
+---
+
+## Author
+
+**Daksh** — [daksh484u](https://github.com/daksh484u)

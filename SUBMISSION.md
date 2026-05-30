@@ -1,71 +1,95 @@
-# Submission — Daksh Inventory & Order Management System
+# Project submission
 
-Fill in your live URLs after deployment.
-
-| Deliverable | Link |
-|---|---|
-| **GitHub Repository** | `https://github.com/YOUR_USERNAME/daksh-inventory` |
-| **Docker Hub (backend image)** | `https://hub.docker.com/r/YOUR_USERNAME/daksh-backend` |
-| **Live Frontend** | `https://YOUR-APP.vercel.app` |
-| **Live Backend API** | `https://YOUR-API.onrender.com` |
-| **API Docs (Swagger)** | `https://YOUR-API.onrender.com/docs` |
+**Name:** Daksh  
+**Project:** Inventory & Order Management System
 
 ---
 
-## Quick verification checklist
+## Links
 
-- [ ] `GET /health` returns `{"status":"ok"}`
-- [ ] Create product → appears in list
-- [ ] Create customer → unique email enforced
-- [ ] Create order → stock decreases, total calculated server-side
-- [ ] Dashboard shows counts and low-stock items
-- [ ] `docker compose up --build` runs all three services locally
+| Item | URL |
+|------|-----|
+| GitHub repo | https://github.com/daksh484u/Inventory-order-management |
+| Live frontend | _Add after Vercel/Netlify deploy_ |
+| Live backend API | _Add after Render deploy_ |
+| API docs | _Same as backend + `/docs`_ |
+| Docker Hub (backend image) | _Add after you push the image_ |
+
+Example Docker Hub link format: `https://hub.docker.com/r/daksh484u/daksh-backend`
 
 ---
 
-## Deploy backend (Render)
+## How to run locally (for reviewer)
 
-1. Push this repo to GitHub.
-2. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint** → connect repo (uses `render.yaml`).
-3. Or **New Web Service** → Docker → root `Backend`, Dockerfile `Backend/Dockerfile`.
-4. Add **PostgreSQL** database; set `DATABASE_URL` from the database **Internal** URL.
-5. Set `CORS_ORIGINS` to your frontend URL (e.g. `https://your-app.vercel.app`).
-6. Deploy; note the public URL (e.g. `https://daksh-api.onrender.com`).
+1. Install **Docker Desktop** and make sure it is running.
+2. Clone the repo:
+   ```bash
+   git clone https://github.com/daksh484u/Inventory-order-management.git
+   cd Inventory-order-management
+   ```
+3. Copy env file and set a database password:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` → set `POSTGRES_PASSWORD` to any strong password.
+4. Run:
+   ```bash
+   docker compose up --build
+   ```
+5. Open **http://localhost** for the app and **http://localhost:8000/docs** for the API.
 
-## Push backend image to Docker Hub
+That’s it — no extra setup needed.
+
+---
+
+## Quick test (optional)
+
+1. **Products** → add a product (e.g. name: Laptop, SKU: LAP-01, price: 500, qty: 10).
+2. **Customers** → add a customer with name, email, phone.
+3. **Orders** → create an order for that customer, pick the product, qty 2.
+4. Check product stock went down by 2 and order total is correct.
+5. **Dashboard** → should show updated counts.
+
+---
+
+## Deployment notes
+
+### Backend on Render
+
+1. Push code to GitHub (already done).
+2. On [render.com](https://render.com) → New → Web Service → connect this repo.
+3. Set **Root Directory** to `Backend` (or use Docker with `Backend/Dockerfile`).
+4. Create a **PostgreSQL** database on Render and copy the **Internal Database URL**.
+5. Add env var: `DATABASE_URL` = that URL.
+6. Add env var: `CORS_ORIGINS` = your frontend URL (e.g. `https://your-app.vercel.app`).
+7. Deploy and copy the public URL (e.g. `https://daksh-api.onrender.com`).
+
+You can also use the `render.yaml` file in the repo for a blueprint deploy.
+
+### Frontend on Vercel
+
+1. Go to [vercel.com](https://vercel.com) → Import GitHub repo.
+2. Set **Root Directory** to `Frontend`.
+3. Add environment variable: `VITE_API_URL` = your Render backend URL (no `/` at the end).
+4. Deploy and copy the live URL.
+
+### Docker Hub (backend image)
+
+From the project root:
 
 ```bash
-docker build -t YOUR_USERNAME/daksh-backend:latest ./Backend
+docker build -t daksh484u/daksh-backend:latest ./Backend
 docker login
-docker push YOUR_USERNAME/daksh-backend:latest
+docker push daksh484u/daksh-backend:latest
 ```
 
-## Deploy frontend (Vercel)
-
-1. [vercel.com](https://vercel.com) → **Add New Project** → import GitHub repo.
-2. **Root Directory**: `Frontend`
-3. **Environment variable**: `VITE_API_URL` = your Render backend URL (no trailing slash).
-4. Deploy; open the generated `.vercel.app` URL.
-
-## Deploy frontend (Netlify)
-
-1. **Add new site** → import repo.
-2. Base directory: `Frontend`, build: `npm run build`, publish: `dist`.
-3. Set `VITE_API_URL` in site environment variables.
-4. Deploy.
+Then put your Docker Hub link in the table above.
 
 ---
 
-## Local Docker
+## Tech used
 
-```bash
-cp .env.example .env
-# Edit POSTGRES_PASSWORD in .env
-docker compose up --build
-```
-
-| Service | URL |
-|---|---|
-| Frontend | http://localhost |
-| Backend | http://localhost:8000 |
-| Swagger | http://localhost:8000/docs |
+- Frontend: React, Vite
+- Backend: Python, FastAPI
+- Database: PostgreSQL
+- Docker + Docker Compose
