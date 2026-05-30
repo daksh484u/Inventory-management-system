@@ -35,6 +35,16 @@ function Avatar({ name }) {
 
 const EMPTY = { full_name: "", email: "", phone: "" };
 
+const INDIAN_PHONE_RE = /^[6-9]\d{9}$/;
+
+function normalizePhone(raw) {
+  const stripped = raw.replace(/[\s\-()]/g, "");
+  if (stripped.startsWith("+91")) return stripped.slice(3);
+  if (stripped.startsWith("91") && stripped.length === 12) return stripped.slice(2);
+  if (stripped.startsWith("0")) return stripped.slice(1);
+  return stripped;
+}
+
 function CustomerModal({ onSave, onClose }) {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
@@ -42,9 +52,20 @@ function CustomerModal({ onSave, onClose }) {
 
   const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
+  const handlePhoneKey = (e) => {
+    const nav = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Tab", "Home", "End"];
+    if (nav.includes(e.key)) return;
+    if (e.key === "+" && e.target.selectionStart === 0) return;
+    if (!/^\d$/.test(e.key)) e.preventDefault();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErr("");
+    if (!INDIAN_PHONE_RE.test(normalizePhone(form.phone))) {
+      setErr("Enter a valid 10-digit Indian mobile number (e.g. 98765 43210).");
+      return;
+    }
     setSaving(true);
     try {
       await createCustomer(form);
@@ -81,7 +102,19 @@ function CustomerModal({ onSave, onClose }) {
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="cust-phone">Phone Number *</label>
-              <input id="cust-phone" className="form-input" name="phone" placeholder="+1 555 000 0000" required value={form.phone} onChange={handleChange} />
+              <input
+                id="cust-phone"
+                className="form-input"
+                name="phone"
+                inputMode="tel"
+                placeholder="e.g. 98765 43210"
+                title="10-digit Indian mobile number, optionally with +91 prefix"
+                maxLength={14}
+                required
+                value={form.phone}
+                onChange={handleChange}
+                onKeyDown={handlePhoneKey}
+              />
             </div>
           </div>
 

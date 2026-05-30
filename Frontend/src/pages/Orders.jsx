@@ -31,6 +31,9 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
   const removeLine = (i) => setLines((l) => l.filter((_, idx) => idx !== i));
   const updateLine = (i, field, value) =>
     setLines((l) => l.map((row, idx) => (idx === i ? { ...row, [field]: value } : row)));
+  const blockQtyKey = (e) => {
+    if (["e", "E", "-", "."].includes(e.key)) e.preventDefault();
+  };
 
   const findProduct = (id) => products.find((p) => String(p.id) === String(id));
 
@@ -136,6 +139,7 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
                         max={selected?.quantity || 9999}
                         value={line.quantity}
                         onChange={(e) => updateLine(i, "quantity", e.target.value)}
+                        onKeyDown={blockQtyKey}
                         required
                         style={{ borderColor: !stockOk ? "var(--danger-500)" : undefined }}
                       />

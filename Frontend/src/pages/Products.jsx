@@ -29,16 +29,23 @@ function ProductModal({ product, onSave, onClose }) {
 
   const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
+  const blockPriceKey = (e) => {
+    if (["e", "E", "-"].includes(e.key)) e.preventDefault();
+  };
+  const blockQtyKey = (e) => {
+    if (["e", "E", "-", "."].includes(e.key)) e.preventDefault();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErr("");
+    const price = parseFloat(form.price);
+    const quantity = parseInt(form.quantity, 10);
+    if (isNaN(price) || price <= 0) { setErr("Price must be a positive number."); return; }
+    if (isNaN(quantity) || quantity < 0) { setErr("Quantity must be 0 or more."); return; }
     setSaving(true);
     try {
-      const payload = {
-        ...form,
-        price: parseFloat(form.price),
-        quantity: parseInt(form.quantity, 10),
-      };
+      const payload = { ...form, price, quantity };
       if (isEdit) await updateProduct(product.id, payload);
       else await createProduct(payload);
       onSave();
@@ -78,11 +85,11 @@ function ProductModal({ product, onSave, onClose }) {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label" htmlFor="prod-price">Price ($) *</label>
-                <input id="prod-price" className="form-input" name="price" type="number" step="0.01" min="0.01" placeholder="0.00" required value={form.price} onChange={handleChange} />
+                <input id="prod-price" className="form-input" name="price" type="number" step="0.01" min="0.01" placeholder="0.00" required value={form.price} onChange={handleChange} onKeyDown={blockPriceKey} />
               </div>
               <div className="form-group">
                 <label className="form-label" htmlFor="prod-qty">Quantity *</label>
-                <input id="prod-qty" className="form-input" name="quantity" type="number" min="0" placeholder="0" required value={form.quantity} onChange={handleChange} />
+                <input id="prod-qty" className="form-input" name="quantity" type="number" min="0" placeholder="0" required value={form.quantity} onChange={handleChange} onKeyDown={blockQtyKey} />
               </div>
             </div>
           </div>
