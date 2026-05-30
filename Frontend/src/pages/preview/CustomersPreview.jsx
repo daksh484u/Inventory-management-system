@@ -2,14 +2,14 @@ import { useState } from "react";
 import PageHeader from "../../components/PageHeader";
 
 const SAMPLE = [
-  { id: "CUS0001", name: "Sarah Mitchell",  email: "sarah@techcorp.com",  phone: "+1 415 555 0182", orders: 24, spent: "$2,640", joined: "12 Jan 2024", status: "Active" },
-  { id: "CUS0002", name: "James Rodriguez", email: "james.r@gmail.com",   phone: "+1 628 555 0341", orders: 8,  spent: "$892",   joined: "03 Mar 2024", status: "Active" },
-  { id: "CUS0003", name: "Priya Sharma",    email: "priya@startup.io",    phone: "+44 20 7946 0200", orders: 16, spent: "$1,840", joined: "19 Nov 2023", status: "Active" },
-  { id: "CUS0004", name: "Alex Chen",       email: "alex.chen@corp.com",  phone: "+1 312 555 0798", orders: 31, spent: "$4,120", joined: "07 Aug 2023", status: "Active" },
-  { id: "CUS0005", name: "Emma Williams",   email: "emma.w@retail.co",    phone: "+61 2 9876 5432", orders: 3,  spent: "$238",   joined: "15 Apr 2025", status: "Active" },
-  { id: "CUS0006", name: "Michael Brown",   email: "m.brown@biz.net",     phone: "+1 718 555 0022", orders: 12, spent: "$1,120", joined: "22 Jun 2024", status: "Active" },
-  { id: "CUS0007", name: "Sofia Espinoza",  email: "sofia@agency.mx",     phone: "+52 55 5678 9012", orders: 5,  spent: "$485",   joined: "30 Sep 2024", status: "Inactive" },
-  { id: "CUS0008", name: "Liam O'Connor",   email: "liam.oc@firm.ie",     phone: "+353 1 234 5678", orders: 19, spent: "$2,100", joined: "11 Feb 2024", status: "Active" },
+  { id: "CUS0001", name: "Rahul Sharma",    email: "rahul.s@techcorp.in",  phone: "+91 98765 43210", orders: 24, spent: "₹2,640", joined: "12 Jan 2024", status: "Active" },
+  { id: "CUS0002", name: "Priya Mehta",     email: "priya.m@gmail.com",    phone: "+91 91234 56789", orders: 8,  spent: "₹892",   joined: "03 Mar 2024", status: "Active" },
+  { id: "CUS0003", name: "Arjun Kapoor",    email: "arjun@startup.io",     phone: "+91 87654 32109", orders: 16, spent: "₹1,840", joined: "19 Nov 2023", status: "Active" },
+  { id: "CUS0004", name: "Sneha Iyer",      email: "sneha.i@corp.com",     phone: "+91 99887 76655", orders: 31, spent: "₹4,120", joined: "07 Aug 2023", status: "Active" },
+  { id: "CUS0005", name: "Vikram Singh",    email: "vikram.s@retail.co",   phone: "+91 70001 23456", orders: 3,  spent: "₹238",   joined: "15 Apr 2025", status: "Active" },
+  { id: "CUS0006", name: "Anjali Desai",    email: "anjali.d@biz.in",      phone: "+91 63345 67890", orders: 12, spent: "₹1,120", joined: "22 Jun 2024", status: "Active" },
+  { id: "CUS0007", name: "Rohan Gupta",     email: "rohan.g@agency.in",    phone: "+91 82234 56789", orders: 5,  spent: "₹485",   joined: "30 Sep 2024", status: "Inactive" },
+  { id: "CUS0008", name: "Neha Joshi",      email: "neha.j@firm.in",       phone: "+91 94455 12345", orders: 19, spent: "₹2,100", joined: "11 Feb 2024", status: "Active" },
 ];
 
 const AVATAR_COLORS = ["#14b8a6", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#a855f7", "#0ea5e9", "#f97316"];

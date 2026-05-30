@@ -6,6 +6,7 @@ import Products from "./pages/Products";
 import Customers from "./pages/Customers";
 import Orders from "./pages/Orders";
 import OrderDetails from "./pages/OrderDetails";
+import OnboardingModal from "./components/OnboardingModal";
 
 import Sidebar from "./components/Navbar";
 
@@ -81,6 +82,7 @@ function RoutesConfig() {
           <Route path="/orders/:id" element={<OrderDetails />} />
         </Routes>
       </div>
+      <OnboardingModal />
     </div>
   );
 }

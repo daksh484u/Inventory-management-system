@@ -1,8 +1,34 @@
+import { useState } from "react";
 import { AreaChart, DonutChart } from "../components/charts";
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const REVENUE  = [3200, 4100, 3800, 5200, 4800, 6100, 6800];
-const ORDERS   = [180,  240,  210,  320,  280,  360,  410 ];
+const RANGE_DATA = {
+  "7d": {
+    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    revenue: [3200, 4100, 3800, 5200, 4800, 6100, 6800],
+    orders:  [18,   24,   21,   32,   28,   36,   41],
+  },
+  "30d": {
+    labels: ["W1", "W2", "W3", "W4"],
+    revenue: [28400, 31200, 29800, 38100],
+    orders:  [164,   188,   172,   220],
+  },
+  "90d": {
+    labels: ["Mar", "Apr", "May"],
+    revenue: [82000, 91400, 98000],
+    orders:  [480,   540,   580],
+  },
+  "1y": {
+    labels: ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May"],
+    revenue: [62000, 71000, 68000, 74000, 88000, 95000, 110000, 78000, 85000, 91000, 98000, 105000],
+    orders:  [360,   420,   400,   440,   520,   560,   640,    460,   500,   540,   580,   620],
+  },
+};
+
+const METRIC_OPTIONS = [
+  { value: "both",    label: "Revenue & Orders" },
+  { value: "revenue", label: "Revenue only" },
+  { value: "orders",  label: "Orders only" },
+];
 
 const ORDER_STATUS = [
   { label: "Completed",  value: 845, color: "#22c55e" },
@@ -12,11 +38,11 @@ const ORDER_STATUS = [
 ];
 
 const TOP_PRODUCTS = [
-  { name: "Wireless Keyboard Pro",   sku: "KB-001",    sold: 482, pct: 100 },
-  { name: "USB-C Hub 7-in-1",        sku: "HUB-220",   sold: 391, pct: 81  },
-  { name: "Noise-Cancel Headset",    sku: "AUD-905",   sold: 318, pct: 66  },
-  { name: "27\" 4K Monitor",          sku: "MON-274",   sold: 254, pct: 53  },
-  { name: "Ergonomic Mouse",         sku: "MS-118",    sold: 201, pct: 42  },
+  { name: "Wireless Keyboard Pro",  sku: "KB-001",    sold: 482, rev: 24054, pct: 100 },
+  { name: "USB-C Hub 7-in-1",       sku: "HUB-220",   sold: 391, rev: 13682, pct: 81  },
+  { name: "Noise-Cancel Headset",   sku: "AUD-905",   sold: 318, rev: 41022, pct: 66  },
+  { name: "27\" 4K Monitor",         sku: "MON-274",   sold: 254, rev: 114046, pct: 53 },
+  { name: "Ergonomic Mouse",        sku: "MS-118",    sold: 201, rev: 12060, pct: 42  },
 ];
 
 const CATEGORIES = [
@@ -29,23 +55,23 @@ const CATEGORIES = [
 const CAT_MAX = Math.max(...CATEGORIES.map((c) => c.count));
 
 const RECENT_ORDERS = [
-  { id: "ORD0042", customer: "Sarah Mitchell",  date: "30 May", items: 3, total: 149.97, status: "Completed",  cls: "badge-success" },
-  { id: "ORD0041", customer: "James Rodriguez", date: "29 May", items: 1, total: 449.00, status: "Processing", cls: "badge-info"    },
-  { id: "ORD0040", customer: "Priya Sharma",    date: "29 May", items: 2, total: 84.98,  status: "Completed",  cls: "badge-success" },
-  { id: "ORD0039", customer: "Alex Chen",       date: "27 May", items: 4, total: 289.96, status: "Completed",  cls: "badge-success" },
-  { id: "ORD0038", customer: "Emma Williams",   date: "26 May", items: 1, total: 59.99,  status: "Pending",    cls: "badge-warning" },
+  { id: "ORD0042", customer: "Rahul Sharma",   date: "30 May", items: 3, total: 149.97, status: "Completed",  cls: "badge-success" },
+  { id: "ORD0041", customer: "Priya Mehta",    date: "29 May", items: 1, total: 449.00, status: "Processing", cls: "badge-info"    },
+  { id: "ORD0040", customer: "Arjun Kapoor",   date: "29 May", items: 2, total: 84.98,  status: "Completed",  cls: "badge-success" },
+  { id: "ORD0039", customer: "Sneha Iyer",     date: "27 May", items: 4, total: 289.96, status: "Completed",  cls: "badge-success" },
+  { id: "ORD0038", customer: "Vikram Singh",   date: "26 May", items: 1, total: 59.99,  status: "Pending",    cls: "badge-warning" },
 ];
 
 const LOW_STOCK = [
-  { name: "27\" 4K Monitor",       sku: "MON-274",   qty: 15, max: 100 },
-  { name: "Noise-Cancel Headset",  sku: "AUD-905",   qty: 23, max: 100 },
-  { name: "Portable SSD 1TB",      sku: "SSD-P1T",   qty: 6,  max: 100 },
-  { name: "Mechanical Keyboard",   sku: "KB-MEC-77", qty: 0,  max: 100 },
+  { name: "27\" 4K Monitor",      sku: "MON-274",   qty: 15, max: 100 },
+  { name: "Noise-Cancel Headset", sku: "AUD-905",   qty: 23, max: 100 },
+  { name: "Portable SSD 1TB",     sku: "SSD-P1T",   qty: 6,  max: 100 },
+  { name: "Mechanical Keyboard",  sku: "KB-MEC-77", qty: 0,  max: 100 },
 ];
 
 const STATS = [
   {
-    label: "Total Revenue", value: "$48,260", delta: "+18.2%", up: true,
+    label: "Total Revenue", value: "₹48,260", delta: "+18.2%", up: true,
     iconClass: "stat-icon-brand", color: "#14b8a6",
     path: "M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
   },
@@ -88,39 +114,89 @@ function StatCard({ label, value, delta, up, iconClass, color, path }) {
   );
 }
 
+const RANGE_TABS = [
+  { label: "7D",  value: "7d" },
+  { label: "30D", value: "30d" },
+  { label: "90D", value: "90d" },
+  { label: "1Y",  value: "1y" },
+];
+
 export default function DashboardPreview() {
+  const [range, setRange] = useState("7d");
+  const [metric, setMetric] = useState("both");
+  const [metricOpen, setMetricOpen] = useState(false);
+
+  const data = RANGE_DATA[range];
+  const series = [];
+  if (metric !== "orders")  series.push({ name: "Revenue", data: data.revenue, color: "#14b8a6" });
+  if (metric !== "revenue") series.push({ name: "Orders",  data: data.orders,  color: "#3b82f6" });
+  const activeMetricLabel = METRIC_OPTIONS.find((m) => m.value === metric)?.label;
+
   return (
     <>
       <div className="stats-grid">
         {STATS.map((s) => <StatCard key={s.label} {...s} />)}
       </div>
 
-      {/* Row 2: chart + donut */}
+      {/* Row 2: area chart + donut */}
       <div className="dashboard-grid-3" style={{ marginBottom: 16 }}>
         <div className="surface">
           <div className="surface-header">
             <div>
-              <div className="surface-title">Sales &amp; Orders — Last 7 days</div>
-              <div className="surface-subtitle">Revenue trending upward this week</div>
+              <div className="surface-title">Sales Trend</div>
+              <div className="surface-subtitle">
+                {range === "7d" ? "Last 7 days" : range === "30d" ? "Last 30 days" : range === "90d" ? "Last 90 days" : "Last 12 months"}
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 14 }}>
-              {[["Revenue", "#14b8a6"], ["Orders", "#3b82f6"]].map(([name, color]) => (
-                <span key={name} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
-                  <span style={{ width: 24, height: 3, borderRadius: 9, background: color }} />
-                  {name}
-                </span>
-              ))}
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {/* Time range tabs */}
+              <div style={{ display: "flex", background: "var(--bg-muted)", borderRadius: "var(--radius-md)", padding: 2, gap: 2 }}>
+                {RANGE_TABS.map((t) => (
+                  <button key={t.value} onClick={() => setRange(t.value)}
+                    style={{
+                      padding: "4px 10px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer",
+                      background: range === t.value ? "var(--bg-surface)" : "transparent",
+                      color: range === t.value ? "var(--brand-600)" : "var(--text-tertiary)",
+                      boxShadow: range === t.value ? "0 1px 3px rgba(0,0,0,.08)" : "none",
+                    }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              {/* Metric dropdown */}
+              <div style={{ position: "relative" }}>
+                <button onClick={() => setMetricOpen((o) => !o)}
+                  style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 12, fontWeight: 500, border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", cursor: "pointer", color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
+                  {activeMetricLabel}
+                  <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" style={{ width: 10, height: 10 }}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                </button>
+                {metricOpen && (
+                  <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--bg-surface)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", boxShadow: "var(--shadow-lg)", zIndex: 100, minWidth: 160 }}>
+                    {METRIC_OPTIONS.map((o) => (
+                      <button key={o.value} onClick={() => { setMetric(o.value); setMetricOpen(false); }}
+                        style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 14px", fontSize: 13, border: "none", background: metric === o.value ? "var(--brand-50)" : "transparent", color: metric === o.value ? "var(--brand-700)" : "var(--text-primary)", fontWeight: metric === o.value ? 600 : 400, cursor: "pointer" }}>
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div style={{ padding: "16px 20px 8px" }}>
             <AreaChart
-              labels={DAYS}
-              series={[
-                { name: "Revenue", data: REVENUE, color: "#14b8a6" },
-                { name: "Orders",  data: ORDERS,  color: "#3b82f6" },
-              ]}
+              labels={data.labels}
+              series={series}
               height={200}
             />
+          </div>
+          <div style={{ padding: "0 20px 14px", display: "flex", gap: 20 }}>
+            {series.map((s) => (
+              <span key={s.name} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
+                <span style={{ width: 24, height: 3, borderRadius: 9, background: s.color }} />
+                {s.name}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -132,30 +208,33 @@ export default function DashboardPreview() {
           <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
             <DonutChart segments={ORDER_STATUS} size={156} />
             <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 9 }}>
-              {ORDER_STATUS.map((s) => (
-                <div key={s.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12.5 }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-secondary)" }}>
-                    <span style={{ width: 9, height: 9, borderRadius: "50%", background: s.color }} />
-                    {s.label}
-                  </span>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <strong>{s.value}</strong>
-                    <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{Math.round((s.value / ORDER_STATUS.reduce((a, b) => a + b.value, 0)) * 100)}%</span>
+              {ORDER_STATUS.map((s) => {
+                const total = ORDER_STATUS.reduce((a, b) => a + b.value, 0);
+                return (
+                  <div key={s.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12.5 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-secondary)" }}>
+                      <span style={{ width: 9, height: 9, borderRadius: "50%", background: s.color }} />
+                      {s.label}
+                    </span>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <strong>{s.value}</strong>
+                      <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{Math.round((s.value / total) * 100)}%</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Row 3: recent orders + panels */}
+      {/* Row 3: recent orders + low stock */}
       <div className="dashboard-grid-3" style={{ marginBottom: 16 }}>
         <div className="surface">
           <div className="surface-header">
             <div>
               <div className="surface-title">Recent Orders</div>
-              <div className="surface-subtitle">Latest 5 orders this week</div>
+              <div className="surface-subtitle">Latest 5 orders</div>
             </div>
             <span className="badge badge-brand">Live</span>
           </div>
@@ -176,7 +255,7 @@ export default function DashboardPreview() {
                     <td><span className="cell-id">{o.id}</span></td>
                     <td className="cell-primary">{o.customer}</td>
                     <td style={{ color: "var(--text-secondary)" }}>{o.date}</td>
-                    <td><strong>${o.total.toFixed(2)}</strong></td>
+                    <td><strong>₹{o.total.toFixed(2)}</strong></td>
                     <td><span className={`badge ${o.cls}`}><span className="badge-dot" />{o.status}</span></td>
                   </tr>
                 ))}
@@ -186,7 +265,6 @@ export default function DashboardPreview() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Low Stock */}
           <div className="surface">
             <div className="surface-header">
               <div className="surface-title">Low Stock Alert</div>
@@ -234,8 +312,9 @@ export default function DashboardPreview() {
                 <tr>
                   <th>#</th>
                   <th>Product</th>
-                  <th>Units Sold</th>
-                  <th style={{ width: 140 }}>Share</th>
+                  <th>Units</th>
+                  <th>Revenue</th>
+                  <th style={{ width: 100 }}>Share</th>
                 </tr>
               </thead>
               <tbody>
@@ -247,6 +326,7 @@ export default function DashboardPreview() {
                       <div className="cell-mono">{p.sku}</div>
                     </td>
                     <td><strong>{p.sold}</strong></td>
+                    <td style={{ color: "var(--brand-600)", fontWeight: 600, fontSize: 13 }}>₹{p.rev.toLocaleString("en-IN")}</td>
                     <td>
                       <div className="stock-bar">
                         <div className="stock-bar-fill" style={{ width: `${p.pct}%`, background: "var(--brand-500)" }} />
@@ -270,7 +350,10 @@ export default function DashboardPreview() {
               <div key={c.name}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
                   <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{c.name}</span>
-                  <strong>{c.count}</strong>
+                  <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <strong>{c.count}</strong>
+                    <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{Math.round((c.count / CAT_MAX) * 100)}%</span>
+                  </span>
                 </div>
                 <div className="stock-bar" style={{ height: 8 }}>
                   <div className="stock-bar-fill" style={{ width: `${Math.round((c.count / CAT_MAX) * 100)}%`, background: c.color }} />

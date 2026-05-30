@@ -128,7 +128,7 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
                         <option value="">Select product</option>
                         {products.map((p) => (
                           <option key={p.id} value={p.id} disabled={p.quantity === 0}>
-                            {p.name} - ${p.price.toFixed(2)} (stock: {p.quantity})
+                            {p.name} - ₹{p.price.toFixed(2)} (stock: {p.quantity})
                           </option>
                         ))}
                       </select>
@@ -181,7 +181,7 @@ function CreateOrderModal({ customers, products, onSave, onClose }) {
               }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: "var(--brand-700)" }}>Estimated Total</span>
                 <span style={{ fontSize: 18, fontWeight: 800, color: "var(--brand-600)" }}>
-                  ${estimatedTotal.toFixed(2)}
+                  ₹{estimatedTotal.toFixed(2)}
                 </span>
               </div>
             )}
@@ -214,6 +214,8 @@ function OrdersLive() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [toDelete, setToDelete] = useState(null);
@@ -268,9 +270,14 @@ function OrdersLive() {
     return c ? c.full_name : `Customer #${id}`;
   };
 
-  const filtered = orders.filter((o) =>
-    String(o.id).includes(search) || String(o.customer_id).includes(search)
-  );
+  const filtered = orders.filter((o) => {
+    const matchSearch = String(o.id).includes(search) || String(o.customer_id).includes(search) ||
+      getCustomerName(o.customer_id).toLowerCase().includes(search.toLowerCase());
+    const orderDate = o.created_at ? new Date(o.created_at) : null;
+    const matchFrom = !dateFrom || (orderDate && orderDate >= new Date(dateFrom));
+    const matchTo = !dateTo || (orderDate && orderDate <= new Date(dateTo + "T23:59:59"));
+    return matchSearch && matchFrom && matchTo;
+  });
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
@@ -281,8 +288,8 @@ function OrdersLive() {
 
   const summary = [
     { label: "Total Orders", value: orders.length, icon: "📋", bg: "var(--brand-50)", text: "var(--brand-700)" },
-    { label: "Total Revenue", value: `$${totalRevenue.toFixed(2)}`, icon: "💰", bg: "var(--success-50)", text: "var(--success-700)" },
-    { label: "Avg. Order Value", value: orders.length ? `$${(totalRevenue / orders.length).toFixed(2)}` : "$0.00", icon: "📊", bg: "var(--warning-50)", text: "var(--warning-700)" },
+    { label: "Total Revenue", value: `₹${totalRevenue.toFixed(2)}`, icon: "💰", bg: "var(--success-50)", text: "var(--success-700)" },
+    { label: "Avg. Order Value", value: orders.length ? `₹${(totalRevenue / orders.length).toFixed(2)}` : "₹0.00", icon: "📊", bg: "var(--warning-50)", text: "var(--warning-700)" },
   ];
 
   return (
@@ -316,19 +323,42 @@ function OrdersLive() {
             <div className="surface-title">All Orders</div>
             <div className="surface-subtitle">{filtered.length} of {orders.length} shown</div>
           </div>
-          <div style={{ position: "relative" }}>
-            <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--text-tertiary)", pointerEvents: "none" }}
-              fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803 7.5 7.5 0 0015.803 15.803z" />
-            </svg>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ position: "relative" }}>
+              <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--text-tertiary)", pointerEvents: "none" }}
+                fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803 7.5 7.5 0 0015.803 15.803z" />
+              </svg>
+              <input
+                id="order-search"
+                className="form-input"
+                style={{ paddingLeft: 32, width: 200, height: 34 }}
+                placeholder="Search orders"
+                value={search}
+                onChange={onSearch}
+              />
+            </div>
             <input
-              id="order-search"
+              type="date"
               className="form-input"
-              style={{ paddingLeft: 32, width: 220, height: 34 }}
-              placeholder="Search by order or customer ID"
-              value={search}
-              onChange={onSearch}
+              style={{ height: 34, width: 148, fontSize: 13, cursor: "pointer" }}
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
             />
+            <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>to</span>
+            <input
+              type="date"
+              className="form-input"
+              style={{ height: 34, width: 148, fontSize: 13, cursor: "pointer" }}
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+            />
+            {(dateFrom || dateTo) && (
+              <button className="btn btn-ghost btn-sm" style={{ height: 34, color: "var(--text-tertiary)" }}
+                onClick={() => { setDateFrom(""); setDateTo(""); setPage(1); }}>
+                Clear
+              </button>
+            )}
           </div>
         </div>
 
@@ -373,7 +403,7 @@ function OrdersLive() {
                       <td style={{ color: "var(--text-secondary)" }}>
                         {o.items?.length ?? 0} {(o.items?.length ?? 0) === 1 ? "item" : "items"}
                       </td>
-                      <td><strong style={{ color: "var(--brand-600)" }}>${o.total_amount?.toFixed(2) ?? "0.00"}</strong></td>
+                      <td><strong style={{ color: "var(--brand-600)" }}>₹{o.total_amount?.toFixed(2) ?? "0.00"}</strong></td>
                       <td><span className="badge badge-success"><span className="badge-dot" />Confirmed</span></td>
                       <td>
                         <div className="cell-actions">
@@ -417,7 +447,7 @@ function OrdersLive() {
       {toDelete && (
         <ConfirmDialog
           title="Cancel Order?"
-          message={`Delete order #${toDelete.id} worth $${toDelete.total_amount?.toFixed(2)}? Stock will be restored. This cannot be undone.`}
+          message={`Delete order #${toDelete.id} worth ₹${toDelete.total_amount?.toFixed(2)}? Stock will be restored. This cannot be undone.`}
           onConfirm={handleDelete}
           onCancel={() => setToDelete(null)}
         />

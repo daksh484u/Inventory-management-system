@@ -84,7 +84,7 @@ function ProductModal({ product, onSave, onClose }) {
 
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label" htmlFor="prod-price">Price ($) *</label>
+                <label className="form-label" htmlFor="prod-price">Price (₹) *</label>
                 <input id="prod-price" className="form-input" name="price" type="number" step="0.01" min="0.01" placeholder="0.00" required value={form.price} onChange={handleChange} onKeyDown={blockPriceKey} />
               </div>
               <div className="form-group">
@@ -249,7 +249,7 @@ function ProductsLive() {
                       <td><span className="cell-id">{fmtId(p.id)}</span></td>
                       <td className="cell-primary">{p.name}</td>
                       <td><span className="badge badge-gray">{p.sku}</span></td>
-                      <td><strong>${p.price?.toFixed(2)}</strong></td>
+                      <td><strong>₹{p.price?.toFixed(2)}</strong></td>
                       <td><StockBadge qty={p.quantity} /></td>
                       <td>
                         <div className="cell-actions">

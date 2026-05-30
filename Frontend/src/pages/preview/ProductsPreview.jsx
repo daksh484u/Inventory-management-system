@@ -95,7 +95,7 @@ export default function ProductsPreview() {
                     <div className="cell-mono" style={{ marginTop: 2 }}>{p.sku}</div>
                   </td>
                   <td><span className="badge badge-gray">{p.cat}</span></td>
-                  <td><strong>${p.price.toFixed(2)}</strong></td>
+                  <td><strong>₹{p.price.toFixed(2)}</strong></td>
                   <td><StockBadge qty={p.qty} /></td>
                   <td>
                     {p.status === "Active"

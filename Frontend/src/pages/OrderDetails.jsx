@@ -105,9 +105,9 @@ function OrderDetails() {
                   items.map((item) => (
                     <tr key={item.id}>
                       <td className="cell-primary">{item.product_name || `Product #${item.product_id}`}</td>
-                      <td>${item.unit_price?.toFixed(2)}</td>
+                      <td>₹{item.unit_price?.toFixed(2)}</td>
                       <td><span className="badge badge-gray">x {item.quantity}</span></td>
-                      <td><strong>${(item.unit_price * item.quantity).toFixed(2)}</strong></td>
+                      <td><strong>₹{(item.unit_price * item.quantity).toFixed(2)}</strong></td>
                     </tr>
                   ))
                 )}
@@ -124,7 +124,7 @@ function OrderDetails() {
             }}>
               <div style={{ display: "flex", gap: 60, fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
                 <span>Total</span>
-                <span style={{ color: "var(--brand-600)" }}>${order.total_amount?.toFixed(2)}</span>
+                <span style={{ color: "var(--brand-600)" }}>₹{order.total_amount?.toFixed(2)}</span>
               </div>
             </div>
           )}
@@ -139,7 +139,7 @@ function OrderDetails() {
               <SummaryRow label="Order ID" value={`#${String(order.id).padStart(4, "0")}`} />
               <SummaryRow label="Customer ID" value={`#${order.customer_id}`} />
               <SummaryRow label="Order Date" value={fmtDate(order.created_at)} />
-              <SummaryRow label="Total Amount" value={`$${order.total_amount?.toFixed(2)}`} bold />
+              <SummaryRow label="Total Amount" value={`₹${order.total_amount?.toFixed(2)}`} bold />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
                 <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>Status</span>
                 <span className="badge badge-success"><span className="badge-dot" />Confirmed</span>
